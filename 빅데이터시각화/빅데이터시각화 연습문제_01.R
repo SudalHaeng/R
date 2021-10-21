@@ -6,7 +6,7 @@ rep(seq(1,4),5)
 #01-(c)
 rep(seq(1,6),seq(1,6))
 #01-(d)
-rep(seq(9,1,-2),5)
+rev(seq(1,9,2)[sequence(1:5)])
 
 #03-(a)
 str(iris)
