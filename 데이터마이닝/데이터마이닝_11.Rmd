@@ -1,0 +1,109 @@
+# 11. 연관규칙
+### 3. 연관규칙 알고리즘
+#### (a) Apriori 알고리즘
+
+#### (b) FP-성장 알고리즘
+
+
+##### 예제 1
+Titanic 자료에 대해 연관분석을 수행한다.  
+이 자료는 승객 2201명에 대한 객실 등급, 성별, 연령, 생존 여부를 포함한다.  
+```{r ex11_1_1, message=FALSE, warning=FALSE}
+# Titanic 자료(테이블 객체)를 분석용 자료로 전환
+data(Titanic)
+titan.df <- as.data.frame(Titanic)
+head(titan.df)
+
+titanic <- NULL
+for(i in 1:4){
+  titanic <- cbind(titanic, rep(as.character(titan.df[,i]), titan.df$Freq))
+}
+titanic <- as.data.frame(titanic)
+names(titanic) <- names(titan.df)[1:4]
+titanic$Class <- as.factor(titanic$Class)
+titanic$Age <- as.factor(titanic$Age)
+titanic$Sex <- as.factor(titanic$Sex)
+titanic$Survived <- as.factor(titanic$Survived)
+summary(titanic)
+
+## 연관규칙 분석 : apriori 알고리즘으로 연관규칙 찾기
+# apriori{arules} 함수 이용
+library(arules)
+# 모든 규칙 생성
+rules.all <- apriori(titanic)
+options(digits=3)
+inspect(rules.all)
+
+# 규칙의 우변(rhs)가 생존 여부(Survived)와 관계된 규칙
+# 설정값 변경 : 최소부분집합크기=2, 최소지지도=0.005, 최소신뢰도=0.8
+rules <- apriori(titanic, control=list(verbose=F),
+                 parameter=list(minlen=2, supp=0.005, conf=0.8),
+                 appearance=list(rhs=c("Survived=No", "Survived=Yes"),
+                                default="lhs"))
+
+
+# 향상도(lift) 기준으로 정렬
+rules.sorted <- sort(rules, by="lift")
+# 규칙 확인
+inspect(rules.sorted)   # [2],[4],[7],[8]은 차례대로 [1],[3],[6],[5]에 포함되는 규칙임
+
+# 중복되는 규칙 찾기
+subset.matrix <- is.subset(rules.sorted, rules.sorted)
+subset.matrix[lower.tri(subset.matrix, diag=T)] <- FALSE
+rebundant <- colSums(subset.matrix, na.rm=T) >= 1
+which(rebundant)
+
+# 중복되는 규칙 삭제
+rules.pruned <- rules.sorted[!rebundant]
+inspect(rules.pruned)
+## 연관규칙 시각화
+library(arulesViz)
+plot(rules.all)  # 디폴트 옵션 : measure=c("support","confidence"), shading="lift"
+plot(rules.all, shading="order")  # 규칙 번호에 따라 음영부여(order 번호가 클수록 규칙 번호가 큼)
+```
+```{r ex11_1_2}
+# plot(rules.all, method="grouped")
+```
+[해석] 
+좌측 상단의 첫 번째 원에 대한 해석은 다음과 같다.  
+{Class=Crew, +2 items}-1 rules은 연관규칙의 좌변(LHS)이 "{Class=Crew, +2 items}: {승무원석 +2개 조건이 추가}"임을 말하며, 규칙의 우변(RHS)은 {Sex=Male}임을 의미하며, 이 조건을 만족하는 연관규칙이 1개(1 rules) 있음을 나타낸다.  
+원의 크기는 지지도를 나타내며, 색이 진할수록 향상도가 큼을 의미한다.  
+
+```{r ex11_1_3}
+plot(rules.sorted)
+plot(rules.sorted, method="grouped")
+```
+```{r ex11_1_4}
+plot(rules.sorted, method="graph", control=list(type="items"))
+```
+그림에서 item은 (변수별 범주 수의 합)으로 10개(4+2+2+2)임  
+
+```{r ex11_1_5}
+# 평행좌표그림
+plot(rules.sorted, method="paracoord", control=list(reorder=TRUE))
+```
+```{r ex11_1_6}
+## 대화식(interactive) 그림
+# 선택된 규칙을 조사(inspect), 줌인(줌아웃), 규칙 필터링(color key에서 절단값 클릭)
+# plot(rules.sorted, measure=c("support", "lift"), shading="confidence", interactive=TRUE)
+```
+```{r ex11_1_7}
+## 행렬-기반 시각화
+# plot(rules.sorted, method="matrix", measure="lift")
+```
+```{r ex11_1_8}
+# plot(rules.sorted, method="matrix",
+#      measure="lift",
+#      control=list(reorder=TRUE))
+```
+```{r ex11_1_9}
+# plot(rules.sorted, method="matrix",
+#      measure=c("lift","confidence"),
+#      control=list(reorder=TRUE))
+```
+```{r ex11_1_10}
+#plot(rules.sorted, method="matrix3D",
+#     measure="lift",
+#     control=list(reorder=TRUE))
+```
+
